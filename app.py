@@ -50,18 +50,18 @@ def home():
 
 @app.route("/api/v1.0/precipitation")
 def percipitation():
-
+    session = Session(engine)
     """Return the precipitation data for the last year"""
     #find date from 12 months ago
     query_date = dt.date(2017, 8, 23) - dt.timedelta(days=365)
 
     # Query for the date and precipitation for the last year
-    last_12_months = session.query(Measurement.date,Measurement.prcp).\
+    percipitation = session.query(Measurement.date,Measurement.prcp).\
     filter(Measurement.date>=query_date).\
     order_by(Measurement.date).all()
 
-    # Convert the query results to a Dictionary using `date` as the key and `prcp` as the value.
-    precip = {date: perc for date, perc in precipitation}
+    # Convert the query results to a Dictionary using `date` as the key and `perc` as the value.
+    precip = {date: perc for date, perc in percipitation}
     return jsonify(precip)
 
 
@@ -69,6 +69,7 @@ def percipitation():
 @app.route("/api/v1.0/stations")
 def stations():
     """Return a JSON list of stations from the dataset"""
+    session = Session(engine)
     results = session.query(Station.station).all()
     stations = list(np.ravel(results))
 
@@ -77,6 +78,7 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tempMonth():
+    session = Session(engine)
     """Return the temperature observations (tobs) for previous year."""
     # Calculate the date 1 year ago from last date in database
     query_data = dt.date(2017, 8, 23) - dt.timedelta(days=365)
@@ -95,17 +97,19 @@ def tempMonth():
 @app.route("/api/v1.0/temp/<start>")
 @app.route("/api/v1.0/temp/<start>/<end>")
 def stats(start=None, end=None):
+    session = Session(engine)
+    sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
     if not end:
-        sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
-        results = session.query(*sel).filter(func.strftime("%m-%d", Measurement.date) >= start).all()
+        # sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+        results = session.query(*sel).filter(Measurement.date >= start).all()
         tempObs = list(np.ravel(results))
 
         # Return the results
         return jsonify(tempObs)
 
     
-    results = session.query(*sel).filter(func.strftime("%m-%d", Measurement.date) >= start).all().\
-        filter(func.strftime("%m-%d", Measurement.date) <= end).all()
+    results = session.query(*sel).filter(Measurement.date >= start).all().\
+        filter(Measurement.date <= end).all()
     tempObs = list(np.ravel(results))
 
     # Return the results
